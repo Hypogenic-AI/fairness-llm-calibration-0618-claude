@@ -1,0 +1,108 @@
+\begin{thebibliography}{15}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Chen et~al.(2024)]{chen2024bias}
+Yixuan Chen et~al.
+\newblock Bias mitigation in fine-tuning pre-trained models for enhanced
+  fairness and efficiency.
+\newblock \emph{arXiv preprint arXiv:2403.00625}, 2024.
+
+\bibitem[{European Parliament and Council of the European
+  Union}(2024)]{euaiact2024}
+{European Parliament and Council of the European Union}.
+\newblock Regulation ({EU}) 2024/1689 of the {European Parliament} and of the
+  {Council} laying down harmonised rules on artificial intelligence ({AI Act}).
+\newblock \emph{Official Journal of the European Union}, 2024.
+
+\bibitem[Gallegos et~al.(2024)Gallegos, Rossi, Barber, Tanjim, Kim,
+  Dernoncourt, Yu, Zhang, and Ahmed]{gallegos2024bias}
+Isabel~O. Gallegos, Ryan~A. Rossi, Joe Barber, Md~Mehrab Tanjim, Sungchul Kim,
+  Franck Dernoncourt, Tong Yu, Ruiyi Zhang, and Nesreen~K. Ahmed.
+\newblock Bias and fairness in large language models: A survey.
+\newblock \emph{Computational Linguistics}, 2024.
+
+\bibitem[Kadavath et~al.(2023)]{kadavath2023just}
+Saurav Kadavath et~al.
+\newblock Just ask for calibration: Strategies for eliciting calibrated
+  confidence scores from language models fine-tuned with human feedback.
+\newblock \emph{arXiv preprint arXiv:2305.14975}, 2023.
+
+\bibitem[Kim et~al.(2024)Kim, Shin, Cho, Jang, Longpre, Lee, Yun, Shin, Kim,
+  Thorne, and Seo]{kim2024prometheus}
+Seungone Kim, Jamin Shin, Yejin Cho, Joel Jang, Shayne Longpre, Hwaran Lee,
+  Sangdoo Yun, Seongjin Shin, Sungdong Kim, James Thorne, and Minjoon Seo.
+\newblock Prometheus: Inducing fine-grained evaluation capability in language
+  models.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}, 2024.
+
+\bibitem[{New York City Council}(2021)]{nyclaw144}
+{New York City Council}.
+\newblock Local law 144 of 2021: Automated employment decision tools.
+\newblock New York City Administrative Code \S 20-870 et seq., 2021.
+
+\bibitem[Panickssery et~al.(2024)Panickssery, Bowman, and
+  Feng]{panickssery2024llm}
+Arjun Panickssery, Samuel~R. Bowman, and Shi Feng.
+\newblock {LLM} evaluators recognize and favor their own generations.
+\newblock \emph{arXiv preprint arXiv:2404.13076}, 2024.
+
+\bibitem[Schaller et~al.(2024)Schaller, Ding, Horbach, Meyer, and
+  Jansen]{schaller2024fairness}
+Robert Schaller, Yuning Ding, Andrea Horbach, Jennifer Meyer, and Thorben
+  Jansen.
+\newblock Fairness in automated essay scoring.
+\newblock In \emph{Proceedings of the 19th Workshop on Innovative Use of NLP
+  for Building Educational Applications (BEA)}, 2024.
+
+\bibitem[Shen et~al.(2025)Shen, Szeto, Li, Huang, and Arbel]{shen2025exposing}
+Xingbo Shen, Khai Szeto, Cheng Li, Jing Huang, and Tal Arbel.
+\newblock Exposing and mitigating calibration biases and demographic unfairness
+  in {MLLM} few-shot {ICL}.
+\newblock \emph{arXiv preprint arXiv:2506.23298}, 2025.
+
+\bibitem[Tversky and Kahneman(1974)]{tversky1974judgment}
+Amos Tversky and Daniel Kahneman.
+\newblock Judgment under uncertainty: Heuristics and biases.
+\newblock \emph{Science}, 185\penalty0 (4157):\penalty0 1124--1131, 1974.
+
+\bibitem[Wang et~al.(2024)Wang, Li, Chen, Cai, Zhu, Lin, Cao, Liu, Liu, and
+  Sui]{wang2023large}
+Peiyi Wang, Lei Li, Liang Chen, Feifan Cai, Dawei Zhu, Binghuai Lin, Yunbo Cao,
+  Qi~Liu, Tianyu Liu, and Zhifang Sui.
+\newblock Large language models are not fair evaluators.
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association
+  for Computational Linguistics (ACL)}, 2024.
+
+\bibitem[Yang et~al.(2025)Yang, Rakovic, Gasevic, and Chen]{yang2025prompt}
+Yiwei Yang, Mladen Rakovic, Dragan Gasevic, and Guanliang Chen.
+\newblock Does the prompt-based {LLM} recognize students' demographics and
+  introduce bias in essay scoring?
+\newblock \emph{arXiv preprint arXiv:2504.21330}, 2025.
+
+\bibitem[Ye et~al.(2024)Ye, Wang, Huang, Chen, Zhang, Moniz, Gao, Geyer, Huang,
+  Chen, Chawla, and Zhang]{ye2024justice}
+Jiayi Ye, Yanbo Wang, Yue Huang, Dongping Chen, Qihui Zhang, Nuno Moniz, Tian
+  Gao, Werner Geyer, Chao Huang, Pin-Yu Chen, Nitesh~V. Chawla, and Xiangliang
+  Zhang.
+\newblock Justice or prejudice? quantifying biases in {LLM}-as-a-judge.
+\newblock \emph{arXiv preprint arXiv:2410.02736}, 2024.
+
+\bibitem[Zheng et~al.(2024)]{zheng2024survey}
+Jiawei Zheng et~al.
+\newblock A survey on {LLM}-as-a-judge.
+\newblock \emph{arXiv preprint arXiv:2411.15594}, 2024.
+
+\bibitem[Zheng et~al.(2023)Zheng, Chiang, Sheng, Zhuang, Wu, Zhuang, Lin, Li,
+  Li, Xing, et~al.]{zheng2023judging}
+Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao
+  Zhuang, Zi~Lin, Zhuohan Li, Dacheng Li, Eric~P. Xing, et~al.
+\newblock Judging {LLM}-as-a-judge with {MT-Bench} and chatbot arena.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2023.
+
+\end{thebibliography}

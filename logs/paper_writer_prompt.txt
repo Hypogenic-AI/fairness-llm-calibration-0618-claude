@@ -1,0 +1,833 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at templates/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. USE COMMAND TEMPLATES: Copy templates/paper_writing/commands/ to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# Fairness-Aware Calibration of LLM Evaluators Using Tokenized Disclosures
+
+## 1. Executive Summary
+
+This study investigates whether LLM evaluators (GPT-4.1) penalize text that includes explicit AI assistance disclosures, and whether this penalty interacts with demographic signals. We found a **statistically significant AI disclosure penalty** of -0.100 points on a 1-5 scale (p=0.003, Cohen&#39;s d=-0.31) when GPT-4.1 evaluates responses prefixed with &#34;This response was written with AI assistance.&#34; Surprisingly, adding a &#34;non-native English speaker&#34; label did not produce a significant independent penalty. We tested two prompt-based calibration strategies — fairness-aware prompting and evidence-first prompting — but neither substantially reduced the disclosure penalty at the per-sample paired level. Only blind evaluation (removing the disclosure text entirely) eliminated the bias, reducing the penalty by 83%. These findings suggest that the AI disclosure penalty is a subtle, implicit bias that resists surface-level prompt engineering and may require architectural or training-level interventions to address.
+
+## 2. Goal
+
+### Hypothesis
+Fine-tuning LLM evaluators to avoid penalizing tokenized AI assistance disclosures and to remove demographic interaction effects will operationalize fairness by design and improve the fairness of algorithmic judgment in ranking, hiring, and review systems.
+
+### Why This Is Important
+As AI-assisted writing becomes ubiquitous, regulatory frameworks (EU AI Act, NYC Local Law 144) increasingly require transparency about AI use. If LLM evaluators — used in hiring, academic review, and content ranking — systematically penalize honest AI disclosures, this creates a perverse incentive against transparency and disproportionately harms those who comply with disclosure requirements.
+
+### Research Questions
+1. Do LLM evaluators penalize text that includes explicit AI assistance disclosures?
+2. Does this penalty interact with demographic signals (non-native English speaker)?
+3. Can prompt-based calibration strategies mitigate identified biases?
+
+## 3. Data Construction
+
+### Dataset Description
+- **Source**: Feedback Collection dataset from Prometheus-eval (HuggingFace)
+- **Size**: 99,952 rubric-based evaluation instances; we sampled 100 diverse items
+- **Characteristics**: Each item includes an instruction, a response to evaluate, scoring rubric (1-5), score descriptions, and a ground truth score
+- **Stratified Sampling**: 20 items per score level (1-5) for balanced representation
+
+### Experimental Design
+We used a 2×2 within-subjects factorial design:
+
+| Condition | Disclosure | Demographic Signal |
+|-----------|:----------:|:------------------:|
+| Control | No | No |
+| Disclosure Only | Yes | No |
+| Demographic Only | No | Yes |
+| Both | Yes | Yes |
+
+**Disclosure text**: &#34;Note: This response was written with AI assistance.&#34;
+**Demographic text**: &#34;Note: The author is a non-native English speaker.&#34;
+
+These were prepended to the response text before evaluation. The underlying response content was identical across all 4 conditions for each sample.
+
+### Example Samples
+
+**Sample 1** (Ground truth score: 2, Criteria: compassion/comprehension):
+- **Control**: &#34;Well, breakups happen and life goes on. You&#39;re feeling a lot of emotions, but that&#39;s normal after ending a long-term relationship...&#34;
+- **Both**: &#34;Note: This response was written with AI assistance. Note: The author is a non-native English speaker.\n\nWell, breakups happen and life goes on...&#34;
+
+### Data Quality
+- All 100 samples had complete rubrics and valid ground truth scores
+- Score distribution: {1: 20, 2: 20, 3: 20, 4: 20, 5: 20} (perfectly balanced)
+- 400 total evaluation instances (100 samples × 4 conditions)
+
+## 4. Experiment Description
+
+### Methodology
+
+#### High-Level Approach
+We evaluate GPT-4.1 as an LLM judge under controlled conditions where we systematically add AI disclosure and demographic signals to identical response texts. We then test whether prompt-based calibration strategies can mitigate identified biases. Each condition was evaluated 3 times (different random seeds) for reliability estimation.
+
+#### Why This Method?
+- **Controlled within-subjects design**: Each sample serves as its own control, isolating the effect of disclosure/demographic signals from response quality differences
+- **Real LLM API calls**: All evaluations use GPT-4.1 (not simulated), providing ecologically valid results
+- **Multiple calibration strategies**: Tests both the existence and malleability of identified biases
+
+### Implementation Details
+
+#### Tools and Libraries
+- Python 3.12.8
+- OpenAI API (gpt-4.1)
+- NumPy 2.3.0, Pandas 2.3.0, SciPy 1.15.3
+- Matplotlib 3.10.3, Seaborn 0.13.2
+- HuggingFace Datasets 3.6.0
+
+#### Calibration Strategies Tested
+
+| Strategy | Description | Mechanism |
+|----------|-------------|-----------|
+| **Vanilla** (none) | Standard evaluation prompt | No calibration |
+| **Fairness-aware** | Add explicit instruction: &#34;Evaluate content quality ONLY. Do NOT consider AI usage or author background.&#34; | Explicit debiasing instruction |
+| **Evidence-first** | Require detailed evidence for each rubric criterion before scoring | Forces content-focused reasoning (adapted from Wang et al. 2023) |
+| **Blind** (oracle) | Strip disclosure/demographic text before evaluation | Information removal (upper bound) |
+
+#### Hyperparameters
+
+| Parameter | Value | Selection Method |
+|-----------|-------|------------------|
+| Model | GPT-4.1 | Latest available |
+| Temperature | 0.3 | Low for consistency, &gt;0 for variance |
+| Max tokens | 500 | Sufficient for evaluation |
+| N runs | 3 | Balance reliability/cost |
+| Seed | 42 | Reproducibility |
+| Max concurrent | 20 | Rate limit management |
+
+### Experimental Protocol
+
+#### Reproducibility Information
+- Number of runs per instance: 3
+- Random seeds: 42, 43, 44
+- Hardware: 4× NVIDIA RTX A6000 (GPU not used for evaluation — API-based)
+- Total API calls: ~4,800
+- Total execution time: 21 minutes
+- Estimated cost: ~$30-50
+
+#### Evaluation Metrics
+1. **Disclosure Penalty**: Paired mean difference (disclosure - control) per sample
+2. **Demographic Penalty**: Paired mean difference (demographic - control)
+3. **Interaction Effect**: (both - demographic) - (disclosure - control)
+4. **Statistical tests**: Paired t-test, Wilcoxon signed-rank, sign test (Bonferroni-corrected)
+5. **Effect size**: Cohen&#39;s d with bootstrap 95% CIs
+6. **Reliability**: ICC(1,1) across 3 runs
+
+### Raw Results
+
+#### Main Effects (All Calibration Strategies)
+
+| Strategy | Control Mean | Disclosure Mean | Penalty | Cohen&#39;s d | p-value | 95% CI |
+|----------|:-----------:|:--------------:|:-------:|:---------:|:-------:|:------:|
+| Vanilla | 3.123 | 3.023 | **-0.100** | -0.31 | **0.003** | [-0.167, -0.040] |
+| Fairness-aware | 3.137 | 3.040 | **-0.097** | -0.27 | **0.007** | [-0.163, -0.027] |
+| Evidence-first | 2.946* | 2.940* | -0.096 | -0.19 | 0.094 | [-0.214, 0.015] |
+| Blind (oracle) | 3.120 | 3.137 | +0.017 | 0.09 | 0.372 | [-0.017, 0.057] |
+
+*Evidence-first had 68/400 items with unparseable scores due to response truncation.
+
+#### Demographic Penalties
+
+| Strategy | Control Mean | Demographic Mean | Penalty | p-value |
+|----------|:-----------:|:----------------:|:-------:|:-------:|
+| Vanilla | 3.123 | 3.107 | -0.017 | 0.594 |
+| Fairness-aware | 3.137 | 3.150 | +0.013 | 0.712 |
+| Evidence-first | 2.946 | 2.947 | +0.077 | 0.232 |
+| Blind (oracle) | 3.120 | 3.083 | -0.037 | 0.124 |
+
+#### Interaction Effects (Disclosure × Demographic)
+
+| Strategy | Interaction | Cohen&#39;s d | p-value | Interpretation |
+|----------|:----------:|:---------:|:-------:|---------------|
+| Vanilla | +0.080 | 0.19 | 0.061 | Borderline: demographic label slightly buffers disclosure penalty |
+| Fairness-aware | +0.063 | 0.13 | 0.190 | Not significant |
+| Evidence-first | -0.043 | -0.07 | 0.586 | Not significant |
+| Blind (oracle) | +0.003 | 0.01 | 0.905 | No interaction (expected) |
+
+#### Disclosure Penalty by Quality Level (Vanilla)
+
+| Ground Truth Score | Penalty | n | p-value |
+|:-----------------:|:-------:|:-:|:-------:|
+| 1 (lowest) | -0.100 | 20 | 0.083 |
+| 2 | **-0.217** | 20 | **0.012** |
+| 3 | -0.083 | 20 | 0.204 |
+| 4 | +0.017 | 20 | 0.825 |
+| 5 (highest) | -0.117 | 20 | 0.201 |
+
+#### Inter-Run Reliability
+
+| Strategy | ICC | Mean Score Range | n items |
+|----------|:---:|:----------------:|:-------:|
+| Vanilla | 0.950 | 0.27 | 400 |
+| Fairness-aware | 0.950 | 0.27 | 400 |
+| Evidence-first | 0.876 | 0.35 | 245 |
+| Blind (oracle) | 0.949 | 0.26 | 400 |
+
+#### Evaluation Reasoning Analysis
+
+| Condition | Evaluator Explicitly Mentions Factor | Rate |
+|-----------|--------------------------------------|:----:|
+| AI Disclosure | Mentions &#34;AI&#34; or &#34;assistance&#34; | 8.0% |
+| Non-Native Speaker | Mentions &#34;language&#34; or &#34;background&#34; | 46.0% |
+
+### Visualizations
+
+Key plots saved to `results/plots/`:
+- `disclosure_penalty_comparison.png`: Bar chart of penalties across strategies with 95% CIs
+- `condition_means_heatmap.png`: Heatmap of mean scores by condition × strategy
+- `interaction_effects.png`: Disclosure × Demographic interaction plots
+- `score_distributions_baseline.png`: Violin plots of score distributions
+- `penalty_by_quality.png`: Penalty magnitude by ground truth quality level
+- `comprehensive_results.png`: Three-panel summary figure
+- `disclosure_penalty_distribution.png`: Histogram of per-sample penalty distribution
+- `calibration_comparison_scatter.png`: Baseline vs. calibrated penalty scatter
+
+## 5. Result Analysis
+
+### Key Findings
+
+**Finding 1: LLM evaluators exhibit a statistically significant AI disclosure penalty.**
+When GPT-4.1 evaluates identical text with an AI assistance disclosure prepended, scores decrease by 0.100 points on average (1-5 scale). This is statistically significant (paired t-test: t=-3.06, p=0.003; Wilcoxon: p=0.002; sign test: p=0.0002) with a small-to-medium effect size (d=-0.31). 28% of samples received lower scores with disclosure, while only 6% received higher scores. The remaining 66% were unchanged, indicating the penalty affects a substantial minority of evaluations.
+
+**Finding 2: The non-native English speaker label alone does not produce a significant scoring penalty.**
+The demographic-only condition showed a negligible -0.017 penalty (p=0.594), suggesting GPT-4.1 does not overtly penalize text labeled as coming from non-native speakers. This is consistent with Schaller et al. (2024) who found GPT-4 was generally fair across demographics with explicit labels, and suggests the model has been aligned to avoid explicit demographic bias.
+
+**Finding 3: Prompt-based calibration strategies are largely ineffective at removing disclosure bias.**
+- **Fairness-aware prompting** (explicit &#34;do not consider AI usage&#34; instruction) reduced the penalty by only 3.3% (from -0.100 to -0.097, still significant at p=0.007). This suggests the model&#39;s bias operates below the level of explicit instruction following.
+- **Evidence-first prompting** (forced reasoning before scoring) showed a numerically similar penalty (-0.096) among items with valid scores, with loss of statistical significance (p=0.094) likely driven by reduced sample size (332/400 valid) rather than genuine debiasing. The strategy also introduced practical problems: 17% of evaluations were truncated before producing a score.
+- **Blind evaluation** (disclosure text removed) eliminated the penalty entirely (+0.017, p=0.37), confirming that the penalty is causally linked to the disclosure text, not a random artifact.
+
+**Finding 4: The disclosure penalty is concentrated in lower-quality responses.**
+Responses with ground truth score 2 (below average) showed the largest penalty (-0.217, p=0.012), while score 4 responses showed no penalty (+0.017). This suggests the evaluator is more harsh about AI disclosure when the underlying content quality is already questionable, potentially applying a &#34;if you used AI and it&#39;s still mediocre&#34; heuristic.
+
+**Finding 5: The bias operates implicitly — the evaluator rarely explicitly references AI assistance.**
+In only 8% of evaluations for disclosure conditions did the evaluator&#39;s reasoning explicitly mention AI or assistance. By contrast, language/background was mentioned in 46% of demographic conditions. This suggests the AI disclosure penalty operates as an implicit anchoring or framing effect, not through explicit reasoning about AI use.
+
+**Finding 6: Borderline interaction between disclosure and demographic signals.**
+The Disclosure × Demographic interaction in the vanilla condition was marginal (d=0.19, p=0.061). The combined condition (both disclosure + demographic) showed a penalty of -0.037, less than disclosure alone (-0.100). This counterintuitive result suggests that when both signals are present, the evaluator may apply a &#34;sympathetic&#34; adjustment — perhaps reasoning that a non-native speaker&#39;s use of AI is more understandable.
+
+### Hypothesis Testing Results
+
+| Hypothesis | Result | Evidence |
+|-----------|--------|----------|
+| H1: Disclosure penalty exists | **Supported** | p=0.003, d=-0.31, 95% CI [-0.167, -0.040] |
+| H2: Demographic interaction amplifies penalty | **Not Supported** | p=0.061 (marginal), direction opposite to predicted |
+| H3: Calibration strategies reduce penalty | **Partially Supported** | Prompt-based strategies ineffective; blind evaluation eliminates penalty |
+
+### Surprises and Insights
+
+1. **Fairness-aware prompting failure**: The most direct approach — telling the model to ignore AI disclosures — had almost zero effect. This is a significant finding for the field: explicit debiasing instructions don&#39;t overcome implicit biases in evaluation.
+
+2. **Demographic resilience**: GPT-4.1 appears well-calibrated against explicit demographic labels, suggesting alignment training has been effective for this dimension. However, this doesn&#39;t address implicit demographic inference from text (as shown by Yang et al., 2025).
+
+3. **Quality-dependent penalty**: The disclosure penalty is strongest for below-average responses. This has practical implications: in hiring/review contexts, candidates with mediocre work who disclose AI use will be disproportionately penalized.
+
+4. **Implicit bias mechanism**: The evaluator rarely mentions AI in its reasoning but still penalizes it, suggesting the disclosure acts as a negative priming/anchoring cue rather than a consciously applied criterion.
+
+### Error Analysis
+
+- **Evidence-first score extraction failures**: 17% of evidence-first evaluations didn&#39;t produce parseable scores. The strategy generates verbose evidence that exceeds the 500-token max_tokens limit. Increasing max_tokens would help but increases cost.
+- **Score clustering at integers**: Most mean scores are exact integers (66% of baseline pairs had identical scores), indicating that the 3-run average doesn&#39;t fully smooth discrete scoring.
+- **Ceiling/floor effects**: High-quality (score 5) and low-quality (score 1) responses show smaller penalties, likely due to ceiling/floor effects where the evaluator is more confident and less influenced by framing.
+
+### Limitations
+
+1. **Single model tested**: Only GPT-4.1 was evaluated. Other LLM evaluators (Claude, Gemini, open-source models) may behave differently.
+2. **English-only**: All evaluation text is in English. Disclosure penalties may differ in other languages.
+3. **Simple disclosure format**: We tested only one disclosure phrasing. Variations in wording, placement, or detail may produce different effects.
+4. **No real demographics**: We used explicit labels rather than text with genuine non-native speaker characteristics. The interaction with actual linguistic features remains unstudied.
+5. **Rubric-based evaluation only**: Results may differ for open-ended evaluation without rubrics.
+6. **Prompt-based calibration only**: We tested only prompt engineering approaches, not fine-tuning or post-hoc score adjustment, which the original hypothesis centers on.
+7. **Sample size**: While 100 samples with 3 runs provides adequate statistical power for the main effect (observed power ~0.86 for d=0.31), subgroup analyses (by quality level) have lower power.
+
+## 6. Conclusions
+
+### Summary
+LLM evaluators (GPT-4.1) exhibit a statistically significant bias against text with AI assistance disclosures, penalizing such text by 0.1 points on a 1-5 scale (d=-0.31). This penalty is implicit — the evaluator rarely explicitly references AI use in its reasoning — and resists prompt-based calibration strategies. Only removing the disclosure text entirely eliminates the penalty, confirming its causal nature. These findings have direct implications for fairness in AI-mediated hiring, academic review, and ranking systems where AI disclosure may be required.
+
+### Implications
+
+**Practical**: Organizations using LLM evaluators should be aware that requiring AI disclosure in candidate materials may introduce systematic scoring bias. Blind evaluation (stripping disclosures before evaluation) is the most effective mitigation currently available.
+
+**Theoretical**: The failure of explicit debiasing instructions (&#34;ignore AI use&#34;) to reduce the penalty suggests that LLM evaluation biases operate at a deeper level than instruction-following, possibly reflecting training data biases about AI-generated content quality. This challenges the &#34;prompt engineering as debiasing&#34; approach.
+
+**Policy**: As AI disclosure requirements become more common (EU AI Act, institutional policies), the interaction between mandatory disclosure and algorithmic evaluation creates a fairness gap that requires attention from both regulators and AI system designers.
+
+### Confidence in Findings
+- **High confidence** in H1 (disclosure penalty exists): Replicated across multiple statistical tests, consistent effect direction.
+- **Moderate confidence** in calibration ineffectiveness: Two strategies tested; more sophisticated approaches (fine-tuning, RLHF) remain untested.
+- **Lower confidence** in interaction effects: Marginal significance, small effect size, interpretation uncertain.
+
+## 7. Next Steps
+
+### Immediate Follow-ups
+1. **Test additional models**: Evaluate Claude, Gemini, and open-source evaluators (Prometheus 2, Llama-based judges) to assess generalizability.
+2. **Fine-tuning approach**: Actually fine-tune an evaluator model on balanced data (with/without disclosures) to train explicit fairness, as originally hypothesized.
+3. **Post-hoc score adjustment**: Adapt CALIN&#39;s bi-level calibration (Shen et al., 2025) to text evaluation: (a) calibrate population-level scores, (b) equalize across disclosure/non-disclosure subgroups.
+4. **Disclosure wording variations**: Test different phrasings (&#34;AI-assisted&#34;, &#34;co-authored with AI&#34;, &#34;proofread by AI&#34;) to map the disclosure penalty landscape.
+
+### Alternative Approaches
+- **Contrastive fine-tuning**: Train on triplets (text, text+disclosure, text+demographic) to learn disclosure-invariant representations.
+- **Score normalization**: Collect disclosure-condition baseline scores and subtract estimated bias post-hoc.
+- **Two-stage evaluation**: First evaluate quality, then separately assess disclosure — preventing cross-contamination.
+
+### Broader Extensions
+- **Real hiring context**: Test with actual job application materials and industry rubrics.
+- **Cross-lingual study**: Evaluate disclosure penalties in non-English contexts.
+- **Longitudinal tracking**: Monitor how disclosure bias evolves as models are updated.
+
+### Open Questions
+1. Why does fairness-aware prompting fail? Is this a fundamental limitation of instruction-following or specific to this model?
+2. Does the disclosure penalty reflect genuine quality differences in AI-assisted text, or purely anchoring bias?
+3. Would users who disclose AI use be better served by structured disclosure (metadata) rather than in-text statements?
+
+## 8. References
+
+1. Wang et al. (2023). &#34;Large Language Models are not Fair Evaluators.&#34; arXiv:2305.17926, ACL 2024.
+2. Ye et al. (2024). &#34;Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge.&#34; arXiv:2410.02736.
+3. Yang et al. (2025). &#34;Does the Prompt-based LLM Recognize Students&#39; Demographics?&#34; arXiv:2504.21330.
+4. Shen et al. (2025). &#34;Exposing and Mitigating Calibration Biases and Demographic Unfairness in MLLM Few-Shot ICL.&#34; arXiv:2506.23298.
+5. Schaller et al. (2024). &#34;Fairness in Automated Essay Scoring.&#34; ACL BEA Workshop 2024.
+6. Zheng et al. (2024). &#34;A Survey on LLM-as-a-Judge.&#34; arXiv:2411.15594.
+7. Gallegos et al. (2024). &#34;Bias and Fairness in LLMs: A Survey.&#34; Computational Linguistics, MIT Press.
+8. Kadavath et al. (2023). &#34;Just Ask for Calibration.&#34; arXiv:2305.14975.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Research Plan: Fairness-Aware Calibration of LLM Evaluators Using Tokenized Disclosures
+
+## Motivation &amp; Novelty Assessment
+
+### Why This Research Matters
+LLM evaluators are increasingly used as judges in hiring, ranking, and review systems. If these evaluators penalize candidates who honestly disclose AI assistance, or if their scores interact with demographic signals (e.g., non-native English speakers being more penalized for AI disclosure than native speakers), this creates a systematic unfairness that discourages transparency and disproportionately harms underrepresented groups. Operationalizing fairness in LLM evaluators is critical for trust in AI-mediated high-stakes decisions.
+
+### Gap in Existing Work
+Based on the literature review:
+1. **No work studies tokenized AI disclosures in evaluation**: While AI detection and watermarking are studied, nobody has measured whether explicit &#34;AI-assisted&#34; disclosures in evaluated text cause LLM judges to penalize the content.
+2. **Demographic interaction effects in LLM evaluation are understudied**: Yang et al. (2025) showed demographic inference introduces scoring bias in essay scoring, but no work examines whether this interacts with AI disclosure.
+3. **Fairness-aware calibration exists only for medical imaging**: CALIN (Shen et al., 2025) combined calibration + fairness but in a different domain. No analogous work exists for text evaluation.
+4. **No calibration approach addresses disclosure penalties**: Existing calibration (position-swapping, evidence-first prompting) doesn&#39;t address the AI disclosure bias dimension.
+
+### Our Novel Contribution
+We are the **first to measure and mitigate the AI disclosure penalty** in LLM evaluators, and the **first to examine demographic × disclosure interaction effects**. We propose and test prompt-based calibration strategies that remove these biases, adapted from the CALIN bi-level framework to text evaluation.
+
+### Experiment Justification
+- **Experiment 1 (Disclosure Penalty Measurement)**: Establishes the baseline problem — do LLM evaluators penalize text with AI assistance disclosures? Without measuring this, we cannot know if calibration is needed.
+- **Experiment 2 (Demographic Interaction Effects)**: Tests whether disclosure penalties interact with demographic signals (e.g., non-native English speaker + AI disclosure). This is critical for understanding whether the bias is uniform or discriminatory.
+- **Experiment 3 (Calibration Strategies)**: Tests whether prompt-based calibration strategies can remove disclosure penalties and demographic interaction effects while maintaining evaluation quality.
+
+## Research Question
+Do LLM evaluators penalize text that includes tokenized AI assistance disclosures, and do these penalties interact with demographic signals? Can prompt-based calibration strategies remove these biases while maintaining evaluation accuracy?
+
+## Hypothesis Decomposition
+- **H1**: LLM evaluators assign lower scores to text that includes explicit AI assistance disclosures compared to identical text without disclosures.
+- **H2**: The disclosure penalty interacts with demographic signals — non-native English speakers (or other underrepresented groups) are penalized more for AI disclosure than majority-group writers.
+- **H3**: Prompt-based calibration strategies (fairness-aware instructions, evidence-first prompting, blind evaluation) can reduce or eliminate disclosure penalties and demographic interaction effects.
+
+## Proposed Methodology
+
+### Approach
+We use a controlled experimental design with real LLM evaluators (GPT-4.1 via OpenAI API). We take text samples from the Feedback Collection dataset (which has rubric-based scoring), systematically inject AI disclosure statements and demographic signals, and measure how these modifications affect LLM evaluator scores. We then test calibration strategies to mitigate identified biases.
+
+### Experimental Steps
+
+#### Step 1: Dataset Construction
+1. Sample 100 response texts from the Feedback Collection dataset (diverse quality levels, scores 1-5)
+2. Create 4 versions of each text:
+   - **Control**: Original text (no disclosure, no demographic signal)
+   - **Disclosure**: Prepend &#34;Note: This response was written with AI assistance.&#34;
+   - **Demographic**: Prepend &#34;Note: The author is a non-native English speaker.&#34;
+   - **Both**: Prepend both disclosure and demographic statements
+3. This gives us a 2×2 factorial design: Disclosure (yes/no) × Demographic Signal (yes/no)
+4. Total: 400 evaluation instances
+
+#### Step 2: Baseline Evaluation (Experiment 1 &amp; 2)
+1. Use GPT-4.1 as the LLM evaluator with the original Feedback Collection rubric
+2. Evaluate all 400 instances with standardized prompts
+3. Each instance evaluated 3 times (different random seeds / temperature) for reliability
+4. Record scores, reasoning, and any mentions of disclosure/demographics
+5. Total API calls: ~1,200
+
+#### Step 3: Calibration Strategies (Experiment 3)
+Test 3 calibration approaches on the same 400 instances:
+- **Fairness-aware prompting**: Add explicit instruction: &#34;Evaluate the content quality only. Do not consider whether AI was used or the author&#39;s background.&#34;
+- **Evidence-first prompting**: Require detailed reasoning about specific quality criteria before giving a score (adapted from Wang et al. 2023)
+- **Blind evaluation**: Strip disclosure/demographic statements before evaluation (oracle baseline — shows maximum possible improvement)
+Total additional API calls: ~3,600 (3 strategies × 400 instances × 3 runs)
+
+### Baselines
+1. **Vanilla LLM evaluator**: GPT-4.1 with standard Feedback Collection rubric (no calibration)
+2. **Blind evaluation**: Disclosure statements removed before evaluation (oracle upper bound)
+3. **Evidence-first prompting**: From Wang et al. (2023) — forces reasoning before scoring
+
+### Evaluation Metrics
+1. **Disclosure Penalty**: Mean score difference between disclosure and no-disclosure conditions (paired)
+2. **Demographic Interaction**: Interaction coefficient in 2×2 ANOVA (Disclosure × Demographic)
+3. **Fairness metrics**:
+   - Overall Score Accuracy (OSA): Agreement between calibrated and blind evaluation
+   - Conditional Score Difference (CSD): Max score difference across subgroups
+4. **Calibration quality**: Pearson correlation and QWK between calibrated scores and blind evaluation scores
+5. **Statistical significance**: Paired t-tests with Bonferroni correction, Cohen&#39;s d for effect sizes
+
+### Statistical Analysis Plan
+- 2×2 repeated-measures ANOVA: Disclosure × Demographic Signal on evaluation scores
+- Paired t-tests for pairwise comparisons with Bonferroni correction (α = 0.05/6 = 0.0083)
+- Cohen&#39;s d for effect sizes (small: 0.2, medium: 0.5, large: 0.8)
+- Bootstrap 95% confidence intervals for key metrics (1000 resamples)
+- ICC (intra-class correlation) for inter-run reliability
+
+## Expected Outcomes
+- **H1 supported**: 0.3-0.5 point decrease in scores with AI disclosure (on 1-5 scale)
+- **H2 supported**: Larger penalty for non-native English speaker + AI disclosure combination
+- **H3 supported**: Fairness-aware prompting reduces disclosure penalty by 50-80%; evidence-first prompting partially reduces it
+- If H1 is not supported (no disclosure penalty), this is also an important finding — suggesting current LLMs are already fair on this dimension
+
+## Timeline and Milestones
+1. Data preparation + dataset construction: 15 min
+2. Baseline experiments (Exp 1 &amp; 2): 30 min
+3. Calibration experiments (Exp 3): 45 min
+4. Analysis and visualization: 30 min
+5. Documentation: 20 min
+
+## Potential Challenges
+1. **API rate limits**: Mitigate with exponential backoff and batching
+2. **High variance in scores**: Mitigate with multiple runs per instance (3 runs)
+3. **No disclosure penalty found**: Still valuable — document and analyze why (model alignment may already handle this)
+4. **Cost**: ~4,800 API calls at ~$0.01 each = ~$48 (manageable)
+
+## Success Criteria
+1. Clear measurement of disclosure penalty magnitude with statistical significance
+2. Clear measurement of demographic interaction effects
+3. At least one calibration strategy that significantly reduces bias
+4. Comprehensive statistical analysis with effect sizes and confidence intervals
+5. Reproducible experimental pipeline
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review: Fairness-Aware Calibration of LLM Evaluators Using Tokenized Disclosures
+
+## Research Area Overview
+
+This literature review surveys work at the intersection of LLM-as-a-judge evaluation, calibration of language model confidence, fairness/bias in automated scoring, and AI-generated text disclosure. The research hypothesis proposes fine-tuning LLM evaluators to avoid penalizing tokenized AI assistance disclosures and to remove demographic interaction effects, thereby operationalizing fairness by design in ranking, hiring, and review systems.
+
+The field has converged on several key themes: (1) LLM evaluators exhibit systematic biases including positional, demographic, and self-preference biases; (2) calibration techniques can partially mitigate these biases; (3) demographic attributes influence scoring in automated essay evaluation; and (4) AI-generated text detection itself carries fairness implications.
+
+---
+
+## Key Papers
+
+### 1. Large Language Models are not Fair Evaluators (Wang et al., 2023)
+- **Authors:** Wang, Li, Chen, Cai, Zhu, Lin, Cao, Liu, Liu, Sui
+- **Year:** 2023 | **Source:** arXiv:2305.17926, ACL 2024
+- **Key Contribution:** Demonstrates severe positional bias in LLM evaluators. Proposes a three-part calibration framework: Multiple Evidence Calibration (MEC), Balanced Position Calibration (BPC), and Human-in-the-Loop Calibration (HITLC).
+- **Methodology:** Evidence-first prompting (reversing score-before-explanation order), position swapping, and entropy-based uncertainty detection (BPDE) to identify examples needing human review.
+- **Datasets:** Vicuna Benchmark (80 questions, 9 categories). Models: GPT-4, ChatGPT.
+- **Results:** Vanilla GPT-4 achieves only 52.7% accuracy on 3-way classification. Full calibration (MEC+BPC) improves by +9.8%. With 20% human annotation, GPT-4 reaches 73.8% -- matching human performance.
+- **Key Metric:** Conflict Rate (proportion of examples where swapping response order reverses judgment): 46.3% for GPT-4.
+- **Code:** https://github.com/i-Eval/FairEval
+- **Relevance:** Foundational work establishing that LLM evaluators need calibration. The evidence-first prompting (forcing reasoning tokens before scores) is a form of tokenized disclosure that calibrates judgment.
+
+### 2. Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge (Ye et al., 2024)
+- **Authors:** Ye, Wang, Huang, Chen, Zhang, Moniz, Gao, Geyer, Huang, Chen, Chawla, Zhang
+- **Year:** 2024 | **Source:** arXiv:2410.02736
+- **Key Contribution:** Comprehensive taxonomy of 12 distinct bias types in LLM judges. Introduces CALM (Comprehensive Assessment of Language Model Judge Biases) framework for automated bias quantification.
+- **12 Biases:** Position, Verbosity, Compassion-Fade, Bandwagon, Distraction, Fallacy-Oversight, Authority, Sentiment, Diversity (demographic), Chain-of-Thought, Self-Enhancement, Refinement-Aware.
+- **Datasets:** GSM8K, MATH, ScienceQA (fact-related); DPO datasets (alignment); CommonsenseQA, TruthfulQA (refinement). 6 LLM judges tested.
+- **Results:** Position bias most severe (ChatGPT RR=0.566). Demographic (diversity) bias: ChatGPT RR=0.679, Claude-3.5 most resistant at 0.914. Self-enhancement error rate up to 16.1% (Qwen2). Biases significantly worse on alignment data (subtle quality differences) than fact-related data.
+- **Code:** https://llm-judge-bias.github.io/
+- **Relevance:** Provides the most comprehensive bias taxonomy for LLM evaluators. The diversity bias findings directly demonstrate that demographic tokens in evaluation context shift judgments. Essential baseline for measuring calibration effectiveness.
+
+### 3. Does the Prompt-based LLM Recognize Students&#39; Demographics and Introduce Bias in Essay Scoring? (Yang et al., 2025)
+- **Authors:** Yang, Rakovic, Gasevic, Chen (Monash University)
+- **Year:** 2025 | **Source:** arXiv:2504.21330
+- **Key Contribution:** Demonstrates that GPT-4o can infer demographic attributes from essay text (especially language background with ~99% coverage, ~82% accuracy) and that bias worsens when demographics are correctly identified.
+- **Methodology:** Two-phase study: (1) demographic inference via prompting, (2) scoring with fairness analysis. Weighted multivariate regression with inverse probability weighting.
+- **Dataset:** PERSUADE 2.0 corpus (25,000+ argumentative essays, grades 6-12, with gender, race, language background metadata). CC BY 4.0 license.
+- **Results:** Scoring errors for non-native English speakers increase when GPT-4o correctly identifies them (Correctness x Language interaction coefficient 0.502, p&lt;0.05). Gender bias was minimal. MAED for non-native speakers: -0.213 (greater errors) in &#34;Correct&#34; group.
+- **Fairness Metrics:** OSA, OSD, CSD, MAED with inverse probability weighting.
+- **Relevance:** Directly relevant -- shows that implicit demographic inference from text tokens introduces scoring bias. Raises critical question: if tokenized disclosures make demographics explicit, will bias worsen? Suggests calibration must operate post-hoc rather than within prompts.
+
+### 4. A Survey on LLM-as-a-Judge (Zheng et al., 2024)
+- **Authors:** Zheng et al.
+- **Year:** 2024 | **Source:** arXiv:2411.15594
+- **Key Contribution:** Comprehensive survey identifying diversity bias (race, gender, sexual orientation) as a distinct category of LLM evaluation bias alongside positional, length, concreteness, and authority biases.
+- **Relevance:** Establishes the conceptual framework for understanding bias categories in LLM evaluation systems.
+
+### 5. Exposing and Mitigating Calibration Biases and Demographic Unfairness in MLLM Few-Shot ICL (Shen et al., 2025)
+- **Authors:** Shen, Szeto, Li, Huang, Arbel (McGill/Mila)
+- **Year:** 2025 | **Source:** arXiv:2506.23298
+- **Key Contribution:** Introduces CALIN, a training-free bi-level calibration algorithm that calibrates MLLM predictions and enforces fairness across demographic subgroups at inference time.
+- **Methodology:** Population-level calibration (L1) followed by subgroup-level calibration (L2) with exponential decay regularization. Operates on token-level predicted probabilities.
+- **Datasets:** PAPILA (glaucoma), HAM10000 (skin cancer), MIMIC-CXR (chest X-ray). Demographic attributes: sex, age.
+- **Results:** CALIN reduces ECE from 23.70 to 2.68 (HAM10000), CCEG for age from 30.25 to 3.14, with minimal accuracy trade-off.
+- **Metrics:** ECE, EOR (equalized odds ratio), CCEG (confidence calibration error gap), ESCE (equity-scaling measure).
+- **Code:** https://github.com/xingbpshen/medical-calibration-fairness-mllm
+- **Relevance:** Most directly analogous to the proposed research. Demonstrates that training-free calibration can simultaneously improve accuracy and fairness. The bi-level approach (population then subgroup) provides a template for fairness-aware calibration of LLM evaluators.
+
+### 6. Fairness in Automated Essay Scoring (Schaller et al., BEA 2024)
+- **Authors:** Schaller, Ding, Horbach, Meyer, Jansen
+- **Year:** 2024 | **Source:** ACL BEA Workshop 2024
+- **Key Contribution:** Evaluates fairness of AES (SVM, BERT, GPT-4) on German essays with demographic and psychological (cognitive ability) variables. Uses RSMTool fairness framework.
+- **Dataset:** DARIUS corpus (4,589 German argumentative essays with grade, gender, language, cognitive ability metadata).
+- **Results:** No model showed unfairness (OSA/OSD/CSD &lt; 0.10) on representative training data. Training on skewed subgroups produces performance disparities. GPT-4 zero-shot was fair but inconsistent across tasks.
+- **Fairness Metrics:** OSA, OSD, CSD (R^2-based regression metrics), threshold 0.10.
+- **Code:** https://github.com/darius-ipn/fairness_AES
+- **Relevance:** Provides a rigorous psychometric fairness evaluation framework adaptable to LLM evaluator calibration. Demonstrates that training data composition is critical for fair outcomes.
+
+### 7. Self-Preference Bias in LLM-as-a-Judge (arXiv:2410.21819, 2024)
+- **Key Contribution:** Documents that LLMs systematically overrate their own outputs when serving as evaluators.
+- **Relevance:** Self-enhancement bias is a confound that fairness-aware calibration must address, especially in systems where the same model generates and evaluates.
+
+### 8. Just Ask for Calibration (Kadavath et al., 2023)
+- **Year:** 2023 | **Source:** arXiv:2305.14975
+- **Key Contribution:** Shows that verbalized confidence scores from RLHF-tuned LLMs are better calibrated than raw token probabilities. Proposes strategies for eliciting calibrated confidence.
+- **Relevance:** Establishes that post-RLHF calibration is degraded and that verbal/token-level confidence elicitation is a viable calibration mechanism.
+
+### 9. Bias and Fairness in LLMs: A Survey (Gallegos et al., 2024)
+- **Year:** 2024 | **Source:** Computational Linguistics (MIT Press), arXiv:2309.00770
+- **Key Contribution:** Comprehensive taxonomy of bias evaluation and mitigation for LLMs. Defines distinct facets of harm and proposes three taxonomies for metrics, datasets, and mitigation.
+- **Relevance:** Provides the theoretical grounding for operationalizing fairness in LLM systems.
+
+### 10. Bias Mitigation in Fine-tuning Pre-trained Models (arXiv:2403.00625, 2024)
+- **Key Contribution:** Introduces a weight importance neutralization strategy using Fisher information across demographic groups, integrated with matrix factorization for efficient debiasing during fine-tuning.
+- **Relevance:** Provides a fine-tuning-based debiasing approach that could be adapted for training fairness-aware LLM evaluators.
+
+---
+
+## Common Methodologies
+
+- **Position swapping and averaging:** Used in Wang et al. (2023) and standard in LLM-as-judge literature to mitigate positional bias.
+- **Evidence-first prompting:** Forcing reasoning before scoring to ground judgments in generated tokens (Wang et al., 2023).
+- **Regression-based fairness metrics (OSA/OSD/CSD):** From psychometrics (Loukina et al., 2019), used in educational AES fairness evaluation.
+- **Robustness Rate (RR):** From CALM (Ye et al., 2024), measuring consistency under bias injection.
+- **Calibration error metrics (ECE, CCEG):** From calibration literature, extended for subgroup fairness.
+- **Inverse probability weighting:** For handling demographic imbalance in fairness analysis.
+
+## Standard Baselines
+
+- **Vanilla LLM-as-judge:** Single evaluation without calibration (Wang et al., 2023)
+- **Prometheus:** Open-source LLM evaluator trained on rubric-based Feedback Collection dataset (ICLR 2024)
+- **GPT-4 / GPT-4o as evaluator:** De facto standard in evaluation benchmarks
+- **Human evaluation:** Gold standard, typically 3 annotators with majority vote
+- **Random baseline:** For measuring above-chance performance of bias detection
+
+## Evaluation Metrics
+
+- **Accuracy/Agreement:** Cohen&#39;s Kappa, Pearson correlation, QWK for scoring alignment
+- **Fairness:** OSA, OSD, CSD (regression R^2), SMD, MAED, CCEG, EOR
+- **Calibration:** ECE (Expected Calibration Error), ESCE (equity-scaling)
+- **Bias Detection:** Conflict Rate, Robustness Rate, BPDE (entropy)
+- **Unfairness threshold:** |metric| &gt; 0.10 (from educational measurement literature)
+
+## Datasets in the Literature
+
+| Dataset | Used In | Task | Demographics | Size |
+|---------|---------|------|--------------|------|
+| PERSUADE 2.0 | Yang et al. 2025 | Essay scoring | Gender, race, language | 25,000+ essays |
+| Vicuna Benchmark | Wang et al. 2023 | LLM evaluation | N/A | 80 questions |
+| CALM datasets | Ye et al. 2024 | Bias quantification | 6 identity groups | ~1,439 samples |
+| MT-Bench | Zheng et al. 2023 | LLM evaluation | N/A | 80 questions + 3.3K judgments |
+| Feedback Collection | Prometheus | Rubric-based eval | N/A | 100K feedback instances |
+| DARIUS | Schaller et al. 2024 | German AES | Gender, grade, language, KFT | 4,589 essays |
+| BBQ | Parrish et al. 2022 | Bias in QA | 13 demographic axes | ~58K |
+| HolisticBias | Meta 2022 | Bias evaluation | 600 identity descriptors | 450K+ prompts |
+
+## Gaps and Opportunities
+
+1. **No work directly addresses tokenized AI disclosures in evaluation:** While watermarking and AI detection are studied, no paper examines how explicit &#34;AI-assisted&#34; disclosures in evaluated text affect LLM judge scoring.
+
+2. **Demographic interaction effects in LLM evaluation are understudied:** Yang et al. (2025) is the first to examine demographic inference + scoring bias interaction in prompt-based LLMs, but only for essay scoring.
+
+3. **Fairness-aware calibration is nascent:** CALIN (Shen et al., 2025) is the only work that explicitly combines calibration and demographic fairness, and it operates in medical imaging, not text evaluation.
+
+4. **Hiring/ranking system evaluation:** While algorithmic fairness in hiring is studied (NYC Local Law 144, EU AI Act), no work examines how LLM evaluators for hiring/review applications handle AI-assisted content.
+
+5. **Fine-tuning for fairness in evaluation:** Debiasing via fine-tuning is explored for general LLMs but not specifically for LLM evaluator/judge models.
+
+## Recommendations for Experiment Design
+
+**Recommended datasets:**
+- **PERSUADE 2.0:** Primary dataset for essay scoring experiments with demographics (publicly available via Kaggle/GitHub, CC BY 4.0)
+- **MT-Bench / Feedback Collection:** For LLM-as-judge evaluation experiments
+- **BBQ / HolisticBias:** For measuring demographic bias
+
+**Recommended baselines:**
+- Vanilla LLM-as-judge (GPT-4o, Claude)
+- Prometheus (open-source rubric-based evaluator)
+- Position-swapped averaging (Wang et al. 2023)
+
+**Recommended metrics:**
+- QWK/Kappa for scoring agreement
+- OSA/OSD/CSD for fairness (with 0.10 threshold)
+- Robustness Rate for bias resistance
+- ECE/CCEG for calibration fairness
+
+**Methodological considerations:**
+- Must test both with and without tokenized disclosures to measure penalty effect
+- Should examine demographic interaction effects (Correctness x Demographics from Yang et al.)
+- Calibration approaches: evidence-first prompting, position averaging, post-hoc score adjustment (CALIN-style), fine-tuning with fairness constraints
+- Need to control for text quality when measuring disclosure penalty
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+3. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+4. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+5. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+6. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+7. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+8. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+9. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Create paper_draft/commands/ directory with:
+   - math.tex: Math notation macros (copy from templates/paper_writing/commands/)
+   - general.tex: Formatting macros (copy from templates/paper_writing/commands/)
+   - macros.tex: Project-specific term definitions
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read templates/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.

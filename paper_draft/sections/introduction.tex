@@ -1,0 +1,19 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Large language models are increasingly deployed as automated evaluators in high-stakes settings---hiring pipelines, academic review, and content ranking systems~\citep{zheng2023judging, zheng2024survey}. At the same time, regulatory pressure is mounting for individuals to disclose when AI assists their work. The EU AI Act mandates transparency about AI-generated content~\citep{euaiact2024}, and New York City's Local Law 144 requires auditing of automated employment decision tools~\citep{nyclaw144}. This creates a critical tension: \textbf{if LLM evaluators systematically penalize honest AI disclosures, then compliance with transparency requirements carries a scoring cost.}
+
+Prior work has documented numerous biases in LLM evaluators, including positional bias~\citep{wang2023large}, self-preference bias~\citep{panickssery2024llm}, and diversity bias across demographic groups~\citep{ye2024justice}. \citet{yang2025prompt} showed that GPT-4o can infer demographic attributes from essay text and that scoring errors increase when these attributes are correctly identified. However, no prior work has measured whether \emph{explicit} AI assistance disclosures---the kind increasingly required by regulation---cause LLM evaluators to assign lower scores.
+
+\para{Our main question.} Do LLM evaluators penalize text that includes tokenized AI assistance disclosures? And if so, can prompt-based calibration strategies eliminate this bias?
+
+We address these questions through a controlled within-subjects experiment using \gptfour as the evaluator and 100 diverse items from the \feedbackcollection dataset~\citep{kim2024prometheus}. We prepend disclosure statements (``This response was written with AI assistance'') and demographic signals (``The author is a non-native English speaker'') to identical response texts in a $2 \times 2$ factorial design, measuring the causal effect of each signal on evaluation scores. We then test three calibration strategies: \fairnessaware prompting (explicit debiasing instructions), \evidencefirst prompting (forced reasoning before scoring), and \blind evaluation (disclosure text removal).
+
+Our results reveal a statistically significant AI \disclosurepenalty of $-0.100$ points on a 1--5 scale ($p = 0.003$, Cohen's $d = -0.31$). This penalty is \emph{implicit}: the evaluator explicitly mentions AI in only 8\% of its reasoning, yet 28\% of samples receive lower scores with the disclosure present. The penalty concentrates on below-average responses, with score-2 items showing the largest effect ($-0.217$, $p = 0.012$). Prompt-based calibration strategies are largely ineffective---fairness-aware prompting reduces the penalty by only 3.3\%---while blind evaluation eliminates it entirely.
+
+We make the following contributions:
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+    \item We provide the first controlled measurement of the AI disclosure penalty in LLM evaluators, showing that \gptfour assigns significantly lower scores to text labeled as AI-assisted ($d = -0.31$, $p = 0.003$).
+    \item We demonstrate that this bias is implicit and quality-dependent: the evaluator rarely references AI in its reasoning, and the penalty is strongest for below-average content.
+    \item We evaluate three calibration strategies and find that prompt-based approaches fail to mitigate the penalty, while only blind evaluation (an oracle baseline) eliminates it---suggesting the bias operates below the level of instruction-following.
+\end{itemize}

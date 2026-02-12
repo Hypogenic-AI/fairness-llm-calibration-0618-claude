@@ -1,0 +1,144 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{AI Disclosure Penalty}
+\label{sec:disclosure_penalty}
+
+\para{Main effect.} \Tabref{tab:main_results} presents the disclosure penalty across all calibration strategies. Under the \vanilla condition, \gptfour assigns significantly lower scores to text with AI disclosure prepended: $\Delta = -0.100$ points on a 1--5 scale (paired $t$-test: $t = -3.06$, $p = 0.003$; Wilcoxon: $p = 0.002$; sign test: $p = 0.0002$). The effect size is small-to-medium (Cohen's $d = -0.31$, 95\% CI $[-0.167, -0.040]$). Of the 100 samples, 28 received lower scores with the disclosure, 6 received higher scores, and 66 were unchanged.
+
+\begin{table}[t]
+    \centering
+    \caption{AI disclosure penalty across calibration strategies. We report the mean score difference (Disclosure $-$ Control), Cohen's $d$ with 95\% CI, and $p$-values from paired $t$-tests. Bold indicates statistical significance after Bonferroni correction ($\alpha = 0.0083$). The \blind strategy serves as an oracle upper bound.}
+    \label{tab:main_results}
+    \vspace{4pt}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lcccccc@{}}
+        \toprule
+        Strategy & Control Mean & Disclosure Mean & Penalty ($\Delta$) & Cohen's $d$ & $p$-value & 95\% CI \\
+        \midrule
+        \vanilla & 3.123 & 3.023 & {\bf $-$0.100} & $-$0.31 & {\bf 0.003} & [$-$0.167, $-$0.040] \\
+        \fairnessaware & 3.137 & 3.040 & {\bf $-$0.097} & $-$0.27 & {\bf 0.007} & [$-$0.163, $-$0.027] \\
+        \evidencefirst & 2.946 & 2.940 & $-$0.096 & $-$0.19 & 0.094 & [$-$0.214, 0.015] \\
+        \blind (oracle) & 3.120 & 3.137 & $+$0.017 & $+$0.09 & 0.372 & [$-$0.017, 0.057] \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+\para{Calibration ineffectiveness.} \fairnessaware prompting---explicitly instructing the evaluator to ignore AI usage---reduces the penalty by only 3.3\% (from $-0.100$ to $-0.097$), and the effect remains statistically significant ($p = 0.007$). \evidencefirst prompting produces a numerically similar penalty ($-0.096$) but loses statistical significance ($p = 0.094$), likely due to reduced sample size: 68 of 400 evaluations (17\%) failed to produce parseable scores because the forced reasoning exceeded the 500-token response limit. Only \blind evaluation eliminates the penalty entirely ($+0.017$, $p = 0.372$), confirming that the disclosure text causally drives the bias. \Figref{fig:penalty_comparison} visualizes the penalty magnitudes with confidence intervals across strategies.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/disclosure_penalty_comparison.png}
+    \caption{AI disclosure penalty across calibration strategies with 95\% confidence intervals. Prompt-based strategies (\fairnessaware and \evidencefirst) fail to reduce the penalty meaningfully. Only \blind evaluation (oracle) eliminates it.}
+    \label{fig:penalty_comparison}
+\end{figure}
+
+\subsection{Demographic Signal Effects}
+\label{sec:demographic}
+
+\Tabref{tab:demographic} shows that the non-native English speaker label alone produces no significant scoring penalty under any strategy. The \vanilla condition shows a negligible $-0.017$ penalty ($p = 0.594$), suggesting that \gptfour has been aligned to avoid explicit demographic bias. This contrasts with the implicit demographic inference documented by \citet{yang2025prompt}, where bias emerged from text features rather than explicit labels.
+
+\begin{table}[t]
+    \centering
+    \caption{Demographic signal penalty (Demographic $-$ Control) across strategies. No strategy shows a statistically significant demographic penalty.}
+    \label{tab:demographic}
+    \vspace{4pt}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        Strategy & Penalty ($\Delta$) & $p$-value & Interpretation \\
+        \midrule
+        \vanilla & $-$0.017 & 0.594 & Not significant \\
+        \fairnessaware & $+$0.013 & 0.712 & Not significant \\
+        \evidencefirst & $+$0.077 & 0.232 & Not significant \\
+        \blind (oracle) & $-$0.037 & 0.124 & Not significant \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Interaction Effects}
+\label{sec:interaction}
+
+We examine whether the disclosure penalty is amplified or attenuated when combined with a demographic signal. \Tabref{tab:interaction} reports the Disclosure $\times$ Demographic interaction for each strategy. Under the \vanilla condition, the interaction is marginal ($d = 0.19$, $p = 0.061$): the combined condition (both signals) produces a smaller penalty ($-0.037$) than disclosure alone ($-0.100$). This suggests that the demographic label may partially buffer the disclosure penalty, perhaps because the evaluator treats AI use by a non-native speaker as more understandable. However, this effect does not reach significance and should be interpreted cautiously.
+
+\begin{table}[t]
+    \centering
+    \caption{Disclosure $\times$ Demographic interaction effects. A positive interaction indicates that the demographic label buffers (reduces) the disclosure penalty. No interaction reaches significance at $\alpha = 0.0083$.}
+    \label{tab:interaction}
+    \vspace{4pt}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        Strategy & Interaction & Cohen's $d$ & $p$-value \\
+        \midrule
+        \vanilla & $+$0.080 & $+$0.19 & 0.061 \\
+        \fairnessaware & $+$0.063 & $+$0.13 & 0.190 \\
+        \evidencefirst & $-$0.043 & $-$0.07 & 0.586 \\
+        \blind (oracle) & $+$0.003 & $+$0.01 & 0.905 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Quality-Dependent Penalty}
+\label{sec:quality}
+
+We analyze the disclosure penalty stratified by ground truth quality level (\tabref{tab:quality}). The penalty is not uniform: it is strongest for below-average responses (score 2: $\Delta = -0.217$, $p = 0.012$) and absent for above-average responses (score 4: $\Delta = +0.017$, $p = 0.825$). This pattern suggests the evaluator applies a harsher standard when AI disclosure is combined with mediocre content, as if applying a ``you used AI and it's still not good'' heuristic.
+
+\begin{table}[t]
+    \centering
+    \caption{Disclosure penalty by ground truth quality level (\vanilla strategy). The penalty is concentrated in below-average responses ($n=20$ per level). Bold indicates $p < 0.05$.}
+    \label{tab:quality}
+    \vspace{4pt}
+    \begin{tabular}{@{}cccc@{}}
+        \toprule
+        Ground Truth Score & Penalty ($\Delta$) & $n$ & $p$-value \\
+        \midrule
+        1 (lowest) & $-$0.100 & 20 & 0.083 \\
+        2 & {\bf $-$0.217} & 20 & {\bf 0.012} \\
+        3 & $-$0.083 & 20 & 0.204 \\
+        4 & $+$0.017 & 20 & 0.825 \\
+        5 (highest) & $-$0.117 & 20 & 0.201 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Implicit Bias Mechanism}
+\label{sec:implicit}
+
+To understand how the disclosure penalty operates, we analyze the evaluator's reasoning text. \Tabref{tab:reasoning} shows the rate at which the evaluator explicitly references the disclosure or demographic signals. AI disclosure is mentioned in only 8.0\% of disclosure-condition evaluations, while the non-native speaker label is mentioned in 46.0\% of demographic-condition evaluations. This asymmetry is striking: the evaluator openly engages with the demographic signal but penalizes the AI disclosure without acknowledging it. This pattern is consistent with an implicit anchoring or framing effect~\citep{tversky1974judgment} rather than explicit reasoning about AI use.
+
+\begin{table}[t]
+    \centering
+    \caption{Rate at which the evaluator explicitly references the injected signal in its reasoning. The AI disclosure penalty operates largely implicitly.}
+    \label{tab:reasoning}
+    \vspace{4pt}
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        Signal Type & Explicit Mention Rate & Penalty Magnitude \\
+        \midrule
+        AI Disclosure & 8.0\% & $-$0.100 (significant) \\
+        Non-Native Speaker & 46.0\% & $-$0.017 (not significant) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Reliability}
+\label{sec:reliability}
+
+\Tabref{tab:reliability} reports inter-run reliability metrics. All strategies except \evidencefirst achieve ICC values of 0.949--0.950, indicating excellent consistency across the three evaluation runs. \evidencefirst shows lower reliability (ICC $= 0.876$) due to its higher score variance and truncation-related parsing failures. The high reliability of the \vanilla condition confirms that the observed disclosure penalty is a stable property of the evaluator, not a random fluctuation.
+
+\begin{table}[t]
+    \centering
+    \caption{Inter-run reliability across strategies. ICC(1,1) is computed across 3 evaluation runs. Higher ICC indicates more consistent scoring.}
+    \label{tab:reliability}
+    \vspace{4pt}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        Strategy & ICC(1,1) & Mean Score Range & Valid Items \\
+        \midrule
+        \vanilla & 0.950 & 0.27 & 400 \\
+        \fairnessaware & 0.950 & 0.27 & 400 \\
+        \evidencefirst & 0.876 & 0.35 & 245 \\
+        \blind (oracle) & 0.949 & 0.26 & 400 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

@@ -1,0 +1,45 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{The Nature of the AI Disclosure Penalty}
+
+Our results establish that \gptfour exhibits a statistically significant bias against text labeled as AI-assisted, even when the underlying text is identical to unlabeled controls. Three properties of this bias are notable.
+
+\para{The bias is implicit.} The evaluator explicitly mentions AI assistance in only 8\% of its reasoning for disclosure conditions, yet assigns lower scores 28\% of the time. This suggests the disclosure acts as a negative anchor or frame~\citep{tversky1974judgment}, shifting the evaluator's overall impression without entering its explicit chain-of-thought. By contrast, the non-native speaker label is mentioned in 46\% of reasoning but produces no significant penalty, indicating that explicit engagement with a signal does not predict its scoring impact.
+
+\para{The bias is quality-dependent.} The penalty concentrates on below-average responses (score 2: $\Delta = -0.217$) and disappears for above-average responses (score 4: $\Delta = +0.017$). This pattern has practical consequences: in settings where marginal candidates are most affected by small score differences---such as hiring cutoffs or pass/fail thresholds---the disclosure penalty disproportionately disadvantages those whose work is already borderline. The evaluator appears to apply a conditional heuristic: AI assistance is penalized when the output does not demonstrate clear quality, as if AI ``should have helped more.''
+
+\para{The bias resists instruction-based correction.} \fairnessaware prompting reduced the penalty by only 3.3\%, from $-0.100$ to $-0.097$. This is a key finding: explicitly telling the model to ignore AI usage has almost no effect. This contrasts with positional bias, where instruction-based calibration achieves meaningful reductions~\citep{wang2023large}. The failure suggests that the AI disclosure penalty operates at a deeper level than instruction-following---possibly reflecting biases in the training data about AI-generated content quality, or arising from the model's internal associations between AI labels and lower quality.
+
+\subsection{Why Prompt-Based Calibration Fails}
+
+The ineffectiveness of prompt-based strategies has implications for the broader debiasing literature. Two explanations are plausible:
+
+\para{Training data bias.} LLMs are trained on data where AI-generated or AI-assisted content is often discussed in the context of quality concerns (plagiarism detection, AI slop, etc.). These associations may be deeply embedded in the model's representations and not overridable by surface-level instructions.
+
+\para{Anchoring resistance.} Cognitive science research shows that anchoring effects persist even when subjects are warned about them~\citep{tversky1974judgment}. If the disclosure text functions as an anchor, then instructing the model to ``ignore it'' may be as ineffective as telling a human to ignore a number they just read.
+
+\evidencefirst prompting, which forces detailed reasoning before scoring, showed a similar penalty magnitude ($-0.096$) but lost statistical significance due to practical failures: 17\% of evaluations were truncated before producing a score. With a sufficient token budget, this strategy might reveal whether forced reasoning genuinely decouples scoring from disclosure framing. However, the increased cost and parsing complexity make it less practical than blind evaluation.
+
+\subsection{Implications}
+
+\para{For AI governance.} Our findings reveal a tension at the heart of AI transparency regulation. Policies requiring AI disclosure (EU AI Act, institutional mandates) assume that disclosure is neutral---that it informs without penalizing. We show this assumption is violated when LLM evaluators process the disclosed text. Organizations using LLM evaluators in high-stakes settings should either (a) strip disclosures before evaluation (blind processing) or (b) apply post-hoc score corrections to compensate for the measured penalty.
+
+\para{For LLM alignment.} The failure of explicit debiasing instructions suggests that current RLHF-based alignment~\citep{kadavath2023just} does not fully address evaluation biases. While \gptfour appears well-calibrated against explicit demographic labels (the non-native speaker penalty is negligible), it has not been similarly aligned for AI disclosure signals. This represents an actionable gap for model providers: evaluation fairness with respect to AI disclosure should be included in alignment objectives.
+
+\para{For evaluation system design.} The most effective mitigation we identify---blind evaluation---is an oracle strategy that removes information before evaluation. In practice, this can be implemented as a preprocessing step that strips disclosure metadata while preserving it in a separate audit trail. Two-stage evaluation pipelines, where quality assessment and disclosure processing happen independently, may achieve similar benefits without information loss.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\para{Single model.} We evaluate only \gptfour. Other LLM evaluators (Claude, Gemini, open-source judges like Prometheus~\citep{kim2024prometheus}) may exhibit different disclosure penalty magnitudes or may be robust to this bias. Multi-model comparison is an important direction.
+
+\para{Single disclosure format.} We test only one disclosure phrasing (``This response was written with AI assistance''). Variations in wording (``AI-assisted,'' ``co-authored with AI,'' ``proofread by AI''), placement (prepended vs.\ appended vs.\ metadata), or granularity may produce different effects.
+
+\para{Synthetic demographic signals.} We use explicit labels rather than text with genuine non-native speaker characteristics. The interaction between AI disclosure and actual linguistic markers of non-native writing remains unstudied.
+
+\para{Rubric-based evaluation only.} Our results apply to rubric-based scoring. Open-ended evaluation, ranking, or pairwise comparison tasks may show different patterns.
+
+\para{Sample size.} While 100 samples provide adequate power for the main effect (observed power $\sim$0.86 for $d = 0.31$), subgroup analyses by quality level ($n = 20$ per level) have lower power and should be interpreted as exploratory.
+
+\para{Prompt-based calibration only.} We do not test fine-tuning-based debiasing~\citep{chen2024bias}, post-hoc score adjustment~\citep{shen2025exposing}, or contrastive training approaches, which may be more effective than the prompt-based strategies evaluated here.

@@ -1,0 +1,81 @@
+\appendix
+
+\section{Additional Results}
+\label{sec:appendix_results}
+
+\subsection{Score Distributions}
+
+\Figref{fig:score_dist} shows the score distributions across all four conditions under the \vanilla strategy. The distributions are visually similar, consistent with the small effect size of the disclosure penalty. The penalty manifests as a subtle shift in the lower tail of the disclosure conditions.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/score_distributions_baseline.png}
+    \caption{Score distributions across the four experimental conditions (\vanilla strategy). The AI disclosure conditions show a subtle leftward shift, consistent with the measured penalty.}
+    \label{fig:score_dist}
+\end{figure}
+
+\subsection{Comprehensive Summary}
+
+\Figref{fig:comprehensive} presents a three-panel summary of the main results: penalty magnitudes across strategies, condition means, and the interaction pattern.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/comprehensive_results.png}
+    \caption{Comprehensive summary of experimental results. \figleft Disclosure penalty by strategy. \figcenter Mean scores by condition. \figright Interaction between disclosure and demographic signals.}
+    \label{fig:comprehensive}
+\end{figure}
+
+\subsection{Penalty Distribution}
+
+\Figref{fig:penalty_dist} shows the distribution of per-sample disclosure penalties. Most samples (66\%) show zero penalty, but the distribution is clearly left-skewed: 28\% of samples are penalized while only 6\% receive a score boost.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\linewidth]{figures/disclosure_penalty_distribution.png}
+    \caption{Distribution of per-sample disclosure penalties (\vanilla strategy). The distribution is left-skewed, with 28\% of samples receiving lower scores and only 6\% receiving higher scores when AI disclosure is present.}
+    \label{fig:penalty_dist}
+\end{figure}
+
+\section{Experimental Details}
+\label{sec:appendix_details}
+
+\subsection{Evaluation Prompt Template}
+
+The evaluation prompt follows the \feedbackcollection format. For the \vanilla condition:
+
+\begin{lstlisting}
+[Instruction]
+{instruction}
+
+[Response]
+{response_with_optional_disclosure}
+
+[Rubric]
+{rubric_description}
+
+Score 1: {score_1_description}
+Score 2: {score_2_description}
+Score 3: {score_3_description}
+Score 4: {score_4_description}
+Score 5: {score_5_description}
+
+Evaluate the response based on the rubric. Provide your
+reasoning, then give a score from 1 to 5.
+\end{lstlisting}
+
+For the \fairnessaware condition, we append: ``Evaluate content quality ONLY. Do NOT consider AI usage or author background.''
+
+For the \evidencefirst condition, we prepend: ``Before scoring, provide detailed evidence for each rubric criterion. Then give your final score.''
+
+\subsection{Hyperparameters}
+
+All experiments use the following settings:
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+    \item Model: GPT-4.1 (via OpenAI API)
+    \item Temperature: 0.3
+    \item Max tokens: 500
+    \item Runs per instance: 3 (seeds: 42, 43, 44)
+    \item Max concurrent API calls: 20
+    \item Total API calls: $\sim$4,800
+    \item Total execution time: 21 minutes
+\end{itemize}

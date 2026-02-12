@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage[final]{neurips_2025}
+
+% Required packages
+\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{subcaption}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{natbib}
+
+% Import command files
+\input{commands/math}
+\input{commands/general}
+\input{commands/macros}
+
+\title{The AI Disclosure Penalty: LLM Evaluators Implicitly Penalize\\Honest AI Assistance Disclosures}
+
+\author{%
+  Anonymous Authors\\
+  Anonymous Institution\\
+}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\newpage
+\input{appendix/supplementary}
+
+\end{document}

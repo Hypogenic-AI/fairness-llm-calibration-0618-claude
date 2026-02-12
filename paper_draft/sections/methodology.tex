@@ -1,0 +1,50 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Experimental Design}
+\label{sec:design}
+
+We use a $2 \times 2$ within-subjects factorial design to isolate the causal effects of AI disclosure and demographic signals on LLM evaluation scores. The two factors are:
+
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+    \item \textbf{AI Disclosure} (present/absent): Prepending ``Note: This response was written with AI assistance.'' to the response text.
+    \item \textbf{Demographic Signal} (present/absent): Prepending ``Note: The author is a non-native English speaker.'' to the response text.
+\end{itemize}
+
+\noindent This yields four conditions per sample: \textbf{Control} (no signals), \textbf{Disclosure Only}, \textbf{Demographic Only}, and \textbf{Both}. The underlying response text is identical across all four conditions for each sample, ensuring that any score differences are attributable solely to the prepended signals.
+
+\subsection{Dataset}
+\label{sec:dataset}
+
+We draw evaluation instances from the \feedbackcollection dataset~\citep{kim2024prometheus}, which contains 99,952 rubric-based evaluation items. Each item includes an instruction, a response to evaluate, a scoring rubric with criteria described at each level (1--5), and a ground truth score. We sample 100 items using stratified sampling: 20 items per score level (1--5), ensuring balanced representation across quality levels. This yields 400 total evaluation instances ($100 \text{ samples} \times 4 \text{ conditions}$).
+
+\subsection{Evaluation Protocol}
+\label{sec:protocol}
+
+We use \gptfour as the LLM evaluator. For each instance, we provide the evaluator with the instruction, the (potentially modified) response, and the scoring rubric, and ask it to produce a score (1--5) with reasoning. We set temperature to 0.3 to allow some variance while maintaining consistency. Each instance is evaluated 3 times with different random seeds (42, 43, 44) for reliability estimation, yielding $400 \times 3 = 1{,}200$ API calls per strategy.
+
+\subsection{Calibration Strategies}
+\label{sec:strategies}
+
+We test three calibration strategies against the vanilla (uncalibrated) baseline:
+
+\para{\fairnessaware prompting.} We append an explicit debiasing instruction to the evaluation prompt: ``Evaluate content quality ONLY. Do NOT consider AI usage or author background.'' This tests whether direct instruction can override implicit bias.
+
+\para{\evidencefirst prompting.} Following \citet{wang2023large}, we require the evaluator to generate detailed evidence for each rubric criterion \emph{before} producing a score. This forces content-focused reasoning and delays the scoring decision, potentially reducing anchoring effects from the disclosure text.
+
+\para{\blind evaluation (oracle).} We strip all disclosure and demographic text from the response before evaluation. This serves as an oracle upper bound---it shows the maximum possible bias reduction achievable by information removal. While not deployable when disclosures carry useful information, it confirms whether observed penalties are causally linked to the disclosure text.
+
+\subsection{Statistical Analysis}
+\label{sec:stats}
+
+We compute the following metrics:
+
+\para{Disclosure penalty.} The paired mean score difference between disclosure and control conditions: $\Delta_{\text{disc}} = \bar{s}_{\text{disclosure}} - \bar{s}_{\text{control}}$, averaged across samples and runs.
+
+\para{Demographic penalty.} Analogously, $\Delta_{\text{demo}} = \bar{s}_{\text{demographic}} - \bar{s}_{\text{control}}$.
+
+\para{Interaction effect.} The difference-in-differences: $(\bar{s}_{\text{both}} - \bar{s}_{\text{demographic}}) - (\bar{s}_{\text{disclosure}} - \bar{s}_{\text{control}})$.
+
+\para{Statistical tests.} We use paired $t$-tests as the primary test, supplemented by Wilcoxon signed-rank tests and sign tests for robustness. We apply Bonferroni correction for multiple comparisons ($\alpha = 0.05/6 = 0.0083$). Effect sizes are reported as Cohen's $d$ with bootstrap 95\% confidence intervals (1,000 resamples).
+
+\para{Reliability.} We compute intraclass correlation coefficients (ICC(1,1)) across the 3 evaluation runs to assess inter-run consistency.

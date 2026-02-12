@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "stages": {
+    "resource_finder": {
+      "success": true,
+      "completion_marker": "/workspaces/fairness-llm-calibration-0618-claude/.resource_finder_complete",
+      "outputs": {
+        "literature_review": "/workspaces/fairness-llm-calibration-0618-claude/literature_review.md",
+        "resources_catalog": "/workspaces/fairness-llm-calibration-0618-claude/resources.md",
+        "papers_dir": "/workspaces/fairness-llm-calibration-0618-claude/papers",
+        "datasets_dir": "/workspaces/fairness-llm-calibration-0618-claude/datasets",
+        "code_dir": "/workspaces/fairness-llm-calibration-0618-claude/code"
+      },
+      "log_file": "/workspaces/fairness-llm-calibration-0618-claude/logs/resource_finder_claude.log",
+      "transcript_file": "/workspaces/fairness-llm-calibration-0618-claude/logs/resource_finder_claude_transcript.jsonl",
+      "elapsed_time": 1239.8783798217773
+    },
+    "experiment_runner": {
+      "success": true,
+      "return_code": 0,
+      "elapsed_time": 2276.296499490738,
+      "log_file": "/workspaces/fairness-llm-calibration-0618-claude/logs/execution_claude.log",
+      "transcript_file": "/workspaces/fairness-llm-calibration-0618-claude/logs/execution_claude_transcript.jsonl"
+    }
+  },
+  "work_dir": "/workspaces/fairness-llm-calibration-0618-claude"
+}
